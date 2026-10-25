@@ -11,7 +11,7 @@ This repository is used to manage a <service> on scaleway using terraform.
 
 ```hcl
 module "my_service" {
-  source  = "scaleway-terraform-modules/<module>/scaleway"
+  source  = "scaleway-terraform-modules/foundation/scaleway"
   version = "0.0.1"
 
   # insert required variables here
@@ -24,7 +24,7 @@ module "my_service" {
 
 ## Authors
 
-Module is maintained with help from [the community](https://github.com/scaleway-terraform-modules/terraform-scaleway-domain/graphs/contributors).
+Module is maintained with help from [the community](https://github.com/scaleway-terraform-modules/terraform-scaleway-foundation/graphs/contributors).
 
 ## License
 
