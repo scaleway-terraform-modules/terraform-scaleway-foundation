@@ -41,7 +41,7 @@ resource "scaleway_object_bucket_policy" "tfstate" {
         # lock Terraform out of the state it is about to save.
         Sid       = "Terraform"
         Effect    = "Allow"
-        Principal = { SCW = "application_id:${data.scaleway_iam_application.ci.id}" }
+        Principal = { SCW = "application_id:${data.scaleway_iam_application.foundation.id}" }
         Action    = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
         Resource  = local.tfstate_resources
         Condition = local.tls_only
