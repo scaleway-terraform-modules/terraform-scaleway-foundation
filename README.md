@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This repository is used to manage a <service> on scaleway using terraform.
+This repository is used to manage the foundation of a Scaleway Organization using terraform: first bootstrapped with a script, then managed by this module.
 
 ## Bootstrap
 
@@ -38,6 +38,8 @@ To protect the API key, the script stops if its secret already exists in another
 The script only manages resources marked with `owner=foundation-bootscript`: as a tag, or in the description for Projects and API keys, which have no tags.
 If a resource with one of the names above exists without that mark, the script stops instead of taking it over.
 It never deletes anything else; the only deletions are the API keys it created earlier and that were replaced.
+
+Terraform only reads these resources, with one exception: the policy of the state bucket is managed by the module (see [Usage](#usage)), and never by the script.
 
 The API key gives full admin rights on the Organization: anyone who can read the secret is an Organization admin.
 Only grant access to the bootstrap Project to Organization admins.
@@ -88,20 +90,75 @@ The API key is stored in the secret, with the `access_key` and `secret_key` fiel
 
 ## Usage
 
-- Setup the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file.
+- Bootstrap the Organization with [`scripts/bootstrap.sh`](#bootstrap), and use the backend configuration it prints.
+- Setup the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file, with the API key stored in the `<name>-ci-key` secret and the Organization ID (provider `organization_id` argument, `SCW_DEFAULT_ORGANIZATION_ID` environment variable or `scw` profile).
 - Include this module in your tf file. Refer to [documentation](https://www.terraform.io/docs/modules/sources.html#generic-git-repository).
 
 ```hcl
-module "my_service" {
+module "foundation" {
   source  = "scaleway-terraform-modules/foundation/scaleway"
   version = "0.0.1"
 
-  # insert required variables here
+  # Only if scripts/bootstrap.sh was run with other values than the defaults:
+  # name                = "tf-foundation"
+  # region              = "fr-par"
+  # use_default_project = false
 }
 ```
 
-<!-- BEGIN_TF_DOCS -->
+The module works on the Organization set in the provider configuration, and fails at plan time if none is set.
+The inputs must match the options used with the bootstrap script: the module finds the bootstrap resources from them, and fails if they do not exist.
 
+### Terraform state bucket policy
+
+The module sets a policy on the state bucket, so that only these principals can access the Terraform state:
+
+- the members of the `Administrators` group (users and applications), with full access;
+- the Terraform IAM application (`<name>-ci`), with the access the S3 backend needs, even if it leaves the `Administrators` group.
+
+All requests must use TLS.
+
+A bucket policy can only restrict access: a request must also be allowed by IAM.
+Bucket policies cannot name a group, so the policy lists the group members: after changing the members of `Administrators`, run `terraform apply` to update it.
+The plan fails if the group has no users, as only the Organization owner could then reach the state.
+The Organization owner can always replace or delete the policy, should access be lost.
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement_terraform) | >= 1.11 |
+| <a name="requirement_scaleway"></a> [scaleway](#requirement_scaleway) | >= 2.79.0 |
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [scaleway_object_bucket_policy.tfstate](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/object_bucket_policy) | resource |
+| [scaleway_account_project.bootstrap](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_project) | data source |
+| [scaleway_account_projects.organization](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_projects) | data source |
+| [scaleway_iam_application.ci](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_application) | data source |
+| [scaleway_iam_group.administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_group) | data source |
+| [scaleway_object_bucket.tfstate](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/object_bucket) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources (the --name of scripts/bootstrap.sh). | `string` | `"tf-foundation"` | no |
+| <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket (the region used by scripts/bootstrap.sh). | `string` | `"fr-par"` | no |
+| <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether scripts/bootstrap.sh was run with --use-default-project. | `bool` | `false` | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_administrators_group_id"></a> [administrators_group_id](#output_administrators_group_id) | ID of the Administrators IAM group. |
+| <a name="output_organization_id"></a> [organization_id](#output_organization_id) | ID of the Organization, taken from the provider configuration. |
+| <a name="output_project_id"></a> [project_id](#output_project_id) | ID of the Project holding the bootstrap resources. |
+| <a name="output_state_bucket_name"></a> [state_bucket_name](#output_state_bucket_name) | Name of the Terraform state bucket. |
+| <a name="output_terraform_application_id"></a> [terraform_application_id](#output_terraform_application_id) | ID of the IAM application used by Terraform. |
 <!-- END_TF_DOCS -->
 
 ## Authors
