@@ -15,7 +15,7 @@ output "state_bucket_name" {
 
 output "terraform_application_id" {
   description = "ID of the IAM application used by Terraform."
-  value       = data.scaleway_iam_application.ci.id
+  value       = data.scaleway_iam_application.foundation.id
 }
 
 output "administrators_group_id" {

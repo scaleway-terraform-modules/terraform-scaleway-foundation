@@ -7,7 +7,7 @@
 locals {
   organization_id = data.scaleway_account_projects.organization.organization_id
 
-  project_id = var.use_default_project ? local.organization_id : data.scaleway_account_project.bootstrap[0].id
+  project_id = var.use_default_project ? local.organization_id : data.scaleway_account_project.foundation[0].id
 
   # Same naming rule as scripts/bootstrap.sh.
   bucket_name = "${var.name}-tfstate-${var.region}-${substr(local.organization_id, 0, 8)}"
@@ -22,14 +22,14 @@ data "scaleway_account_projects" "organization" {}
 
 # --- Resources created by scripts/bootstrap.sh (read only) ---------------------------
 
-data "scaleway_account_project" "bootstrap" {
+data "scaleway_account_project" "foundation" {
   count = var.use_default_project ? 0 : 1
 
   name            = var.name
   organization_id = local.organization_id
 }
 
-data "scaleway_iam_application" "ci" {
+data "scaleway_iam_application" "foundation" {
   name            = "${var.name}-ci"
   organization_id = local.organization_id
 }

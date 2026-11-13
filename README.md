@@ -145,9 +145,9 @@ See the [budget example](examples/budget/README.md) for the settings, how alerts
 | [scaleway_billing_budget_alert.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert) | resource |
 | [scaleway_billing_budget_alert_notification.email](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert_notification) | resource |
 | [scaleway_object_bucket_policy.tfstate](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/object_bucket_policy) | resource |
-| [scaleway_account_project.bootstrap](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_project) | data source |
+| [scaleway_account_project.foundation](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_project) | data source |
 | [scaleway_account_projects.organization](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_projects) | data source |
-| [scaleway_iam_application.ci](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_application) | data source |
+| [scaleway_iam_application.foundation](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_application) | data source |
 | [scaleway_iam_group.administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_group) | data source |
 | [scaleway_iam_group.billing_administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_group) | data source |
 | [scaleway_iam_user.billing_administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_user) | data source |
