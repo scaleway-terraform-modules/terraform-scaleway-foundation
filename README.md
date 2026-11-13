@@ -123,6 +123,12 @@ Bucket policies cannot name a group, so the policy lists the group members: afte
 The plan fails if the group has no users, as only the Organization owner could then reach the state.
 The Organization owner can always replace or delete the policy, should access be lost.
 
+### Budget
+
+With the optional `budget` input, the module sets a monthly spending limit on the Organization, and emails the users of the `Billing Administrators` group when spending reaches thresholds expressed as percentages of that limit (80%, 95% and 100% by default).
+
+See the [budget example](examples/budget/README.md) for the settings, how alerts work, and how to import a budget already created in the Scaleway console.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -135,17 +141,23 @@ The Organization owner can always replace or delete the policy, should access be
 
 | Name | Type |
 |------|------|
+| [scaleway_billing_budget.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget) | resource |
+| [scaleway_billing_budget_alert.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert) | resource |
+| [scaleway_billing_budget_alert_notification.email](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert_notification) | resource |
 | [scaleway_object_bucket_policy.tfstate](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/object_bucket_policy) | resource |
 | [scaleway_account_project.bootstrap](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_project) | data source |
 | [scaleway_account_projects.organization](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_projects) | data source |
 | [scaleway_iam_application.ci](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_application) | data source |
 | [scaleway_iam_group.administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_group) | data source |
+| [scaleway_iam_group.billing_administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_group) | data source |
+| [scaleway_iam_user.billing_administrators](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/iam_user) | data source |
 | [scaleway_object_bucket.tfstate](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/object_bucket) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_budget"></a> [budget](#input_budget) | Monthly spending limit of the Organization, in euros, and the thresholds (percentages of the limit) at which the members of the Billing Administrators group are notified by email. Leave null to manage no budget. | ```object({ limit = number enabled = optional(bool, true) thresholds = optional(list(number), [80, 95, 100]) })``` | `null` | no |
 | <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources (the --name of scripts/bootstrap.sh). | `string` | `"tf-foundation"` | no |
 | <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket (the region used by scripts/bootstrap.sh). | `string` | `"fr-par"` | no |
 | <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether scripts/bootstrap.sh was run with --use-default-project. | `bool` | `false` | no |
@@ -155,6 +167,7 @@ The Organization owner can always replace or delete the policy, should access be
 | Name | Description |
 |------|-------------|
 | <a name="output_administrators_group_id"></a> [administrators_group_id](#output_administrators_group_id) | ID of the Administrators IAM group. |
+| <a name="output_budget_id"></a> [budget_id](#output_budget_id) | ID of the Organization budget, or null when no budget is managed. |
 | <a name="output_organization_id"></a> [organization_id](#output_organization_id) | ID of the Organization, taken from the provider configuration. |
 | <a name="output_project_id"></a> [project_id](#output_project_id) | ID of the Project holding the bootstrap resources. |
 | <a name="output_state_bucket_name"></a> [state_bucket_name](#output_state_bucket_name) | Name of the Terraform state bucket. |

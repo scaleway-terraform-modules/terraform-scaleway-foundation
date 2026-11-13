@@ -29,3 +29,28 @@ variable "use_default_project" {
   description = "Whether scripts/bootstrap.sh was run with --use-default-project."
   default     = false
 }
+
+variable "budget" {
+  type = object({
+    limit      = number
+    enabled    = optional(bool, true)
+    thresholds = optional(list(number), [80, 95, 100])
+  })
+  description = "Monthly spending limit of the Organization, in euros, and the thresholds (percentages of the limit) at which the members of the Billing Administrators group are notified by email. Leave null to manage no budget."
+  default     = null
+
+  validation {
+    condition     = var.budget == null ? true : var.budget.limit > 0
+    error_message = "budget.limit must be a positive amount, in euros."
+  }
+
+  validation {
+    condition     = var.budget == null ? true : alltrue([for threshold in var.budget.thresholds : threshold > 0 && threshold <= 100])
+    error_message = "budget.thresholds must be percentages, greater than 0 and up to 100."
+  }
+
+  validation {
+    condition     = var.budget == null ? true : length(distinct(var.budget.thresholds)) == length(var.budget.thresholds)
+    error_message = "budget.thresholds must not contain duplicates."
+  }
+}

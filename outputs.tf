@@ -22,3 +22,8 @@ output "administrators_group_id" {
   description = "ID of the Administrators IAM group."
   value       = data.scaleway_iam_group.administrators.id
 }
+
+output "budget_id" {
+  description = "ID of the Organization budget, or null when no budget is managed."
+  value       = one(scaleway_billing_budget.this[*].id)
+}
