@@ -6,7 +6,9 @@
 # after --name (default: tf-foundation):
 #   1. a "<name>" Project (or the Organization's "default" Project, with --use-default-project);
 #   2. a versioned, private Object Storage bucket "<name>-tfstate-<region>-<org8>" for the
-#      Terraform state;
+#      Terraform state, with lifecycle rules expiring old versions of the state (after
+#      --state-retention days, default 90) and cleaning up after state locks and
+#      incomplete uploads;
 #   3. an IAM application "<name>-ci" used by Terraform;
 #   4. the membership of that application in the "Administrators" group;
 #   5. an API key "<name>-ci" for that application, with the Project of 1. as default Project;
@@ -22,7 +24,8 @@
 # environment variables, or a scw profile). They must belong to an Organization admin.
 #
 # Usage: scripts/bootstrap.sh --organization-id <id> [--name <name>] [--profile <name>]
-#          [--region <region>] [--use-default-project] [--dry-run] [--yes]
+#          [--region <region>] [--use-default-project] [--state-retention <days|never>]
+#          [--dry-run] [--yes]
 #
 # Requirements: bash >= 3.2, scw CLI >= 2.65.
 
@@ -34,6 +37,12 @@ readonly OWNER_TAG="owner=foundation-bootscript"
 readonly DEFAULT_NAME="tf-foundation"
 readonly DEFAULT_REGION="fr-par"
 readonly ADMIN_GROUP_NAME="Administrators"
+
+# Lifecycle of the state bucket. Old versions of the state are kept long enough to
+# restore a state broken by an apply noticed late, at least a monthly cycle.
+readonly DEFAULT_STATE_RETENTION=90
+readonly MIN_STATE_RETENTION=30
+readonly INCOMPLETE_UPLOAD_DAYS=7
 
 readonly UUID_REGEX='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 readonly ACCESS_KEY_REGEX='^SCW[A-Z0-9]{17}$'
@@ -48,6 +57,7 @@ NAME="${DEFAULT_NAME}"
 REGION=""
 PROFILE=""
 USE_DEFAULT_PROJECT=false
+STATE_RETENTION=""
 DRY_RUN=false
 ASSUME_YES=false
 
@@ -70,6 +80,7 @@ BEARER_NAME=""
 CHANGES=0
 
 PROJECT_ID=""
+BUCKET_EXISTS=false
 APPLICATION_ID=""
 SECRET_ID=""
 
@@ -156,6 +167,11 @@ Options:
   --region <region>       Region of the state bucket and of the secret. Defaults to
                           SCW_DEFAULT_REGION, then to the default region of the scw
                           profile, then to ${DEFAULT_REGION}.
+  --state-retention <days|never>
+                          Days during which old versions of the Terraform state are kept
+                          after being replaced, ${MIN_STATE_RETENTION} at least, or "never" to never expire
+                          them. Defaults to the current retention of the bucket, then to
+                          ${DEFAULT_STATE_RETENTION}: only needed to change it.
   --dry-run               Only read the current state and show what would change.
   --yes                   Do not ask for confirmation before making changes.
   -h, --help              Show this help.
@@ -171,13 +187,14 @@ EOF
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --organization-id | --name | --profile | --region)
+      --organization-id | --name | --profile | --region | --state-retention)
         [[ $# -ge 2 && -n "$2" ]] || die "$1 requires a value."
         case "$1" in
           --organization-id) ORGANIZATION_ID="$2" ;;
           --name) NAME="$2" ;;
           --profile) PROFILE="$2" ;;
           --region) REGION="$2" ;;
+          --state-retention) STATE_RETENTION="$2" ;;
         esac
         shift 2
         ;;
@@ -185,6 +202,7 @@ parse_args() {
       --name=*) NAME="${1#*=}" && shift ;;
       --profile=*) PROFILE="${1#*=}" && shift ;;
       --region=*) REGION="${1#*=}" && shift ;;
+      --state-retention=*) STATE_RETENTION="${1#*=}" && shift ;;
       --use-default-project) USE_DEFAULT_PROJECT=true && shift ;;
       --dry-run) DRY_RUN=true && shift ;;
       --yes) ASSUME_YES=true && shift ;;
@@ -203,6 +221,12 @@ parse_args() {
   if [[ -n "${REGION}" ]]; then
     [[ "${REGION}" =~ ${REGION_REGEX} ]] || die "Invalid region: ${REGION}"
     REGION_SOURCE="--region"
+  fi
+  if [[ -n "${STATE_RETENTION}" && "${STATE_RETENTION}" != "never" ]]; then
+    if ! [[ "${STATE_RETENTION}" =~ ^[0-9]{1,5}$ ]] || ((10#${STATE_RETENTION} < MIN_STATE_RETENTION)); then
+      die "Invalid --state-retention '${STATE_RETENTION}': use a number of days, ${MIN_STATE_RETENTION} at least, or 'never'."
+    fi
+    STATE_RETENTION=$((10#${STATE_RETENTION}))
   fi
 }
 
@@ -391,6 +415,7 @@ ensure_bucket() {
     local fixes=""
     [[ "${versioning}" == "true" ]] || fixes="enable versioning"
     [[ "${private}" == true ]] || fixes="${fixes:+${fixes} and }set the private ACL"
+    BUCKET_EXISTS=true
     if [[ -z "${fixes}" ]]; then
       ok "exists, versioning enabled, private"
     else
@@ -404,9 +429,93 @@ ensure_bucket() {
     change "create bucket '${BUCKET_NAME}' with versioning"
     scw_write object bucket create name="${BUCKET_NAME}" project-id="${PROJECT_ID}" region="${REGION}" \
       enable-versioning=true acl=private tags.0="${OWNER_TAG}" >/dev/null
+    [[ "${DRY_RUN}" == true ]] || BUCKET_EXISTS=true
   else
     die "Cannot read bucket '${BUCKET_NAME}' (the name may be taken by another Organization): ${output}"
   fi
+}
+
+# Lifecycle rules of the state bucket, as a JSON lifecycle configuration: expire old
+# versions of the state after $1 days (no rule with "never"), remove the delete markers
+# left once the old versions of a lock file have expired, and abort incomplete uploads.
+lifecycle_configuration() {
+  local old_versions=""
+  [[ "$1" == "never" ]] || old_versions="$(printf '{"ID":"delete-old-state-versions","Status":"Enabled","Filter":{"Prefix":""},"NoncurrentVersionExpiration":{"NoncurrentDays":%s}},' "$1")"
+  printf '{"Rules":[%s{"ID":"delete-lockfile-leftovers","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"ExpiredObjectDeleteMarker":true}},{"ID":"abort-incomplete-uploads","Status":"Enabled","Filter":{"Prefix":""},"AbortIncompleteMultipartUpload":{"DaysAfterInitiation":%s}}]}\n' \
+    "${old_versions}" "${INCOMPLETE_UPLOAD_DAYS}"
+}
+
+# Retention of a lifecycle configuration set by this script: a number of days, or
+# "never". Prints nothing if the configuration holds anything else, such as another
+# rule, another action, a disabled rule or a retention below the minimum.
+lifecycle_retention() {
+  local rules days="never" token
+  # scw sorts and indents the keys: compare without whitespace.
+  rules="$(printf '%s' "$1" | tr -d '[:space:]')"
+  if [[ "${rules}" =~ \"NoncurrentDays\":([0-9]+) ]]; then
+    days="$((10#${BASH_REMATCH[1]}))"
+    ((days >= MIN_STATE_RETENTION)) || return 0
+  fi
+
+  local tokens=(
+    '"ID":"delete-lockfile-leftovers"'
+    '"Expiration":{"ExpiredObjectDeleteMarker":true}'
+    '"ID":"abort-incomplete-uploads"'
+    "\"AbortIncompleteMultipartUpload\":{\"DaysAfterInitiation\":${INCOMPLETE_UPLOAD_DAYS}}"
+  )
+  [[ "${days}" == "never" ]] ||
+    tokens+=('"ID":"delete-old-state-versions"' "\"NoncurrentVersionExpiration\":{\"NoncurrentDays\":${days}}")
+
+  # Each expected token must appear exactly once. Once they are removed, along with the
+  # enabled statuses and the empty filters, only punctuation may remain.
+  for token in "${tokens[@]}"; do
+    [[ "${rules}" == *"${token}"* ]] || return 0
+    rules="${rules/"${token}"/}"
+    [[ "${rules}" != *"${token}"* ]] || return 0
+  done
+  rules="${rules//'"Status":"Enabled"'/}"
+  rules="${rules//'"Filter":{"Prefix":""}'/}"
+  rules="${rules//'"Filter":{}'/}"
+  rules="${rules/'"Rules":'/}"
+  [[ "${rules}" =~ ^[][{},]*$ ]] || return 0
+  printf '%s' "${days}"
+}
+
+# Lifecycle rules of the state bucket. The retention is kept as it is unless
+# --state-retention is set, so that it does not have to be repeated on every run.
+ensure_bucket_lifecycle() {
+  step "Lifecycle rules of bucket '${BUCKET_NAME}'"
+  local current="" output
+  if [[ "${BUCKET_EXISTS}" == true ]]; then
+    if output="$(scw_read object bucket-lifecycle get "${BUCKET_NAME}" project-id="${PROJECT_ID}" region="${REGION}" 2>&1)"; then
+      current="$(lifecycle_retention "${output}")"
+      [[ -n "${current}" ]] || warn "The lifecycle rules of the bucket were not set by this script: they will be replaced."
+    elif ! printf '%s' "${output}" | grep -qiE 'NoSuchLifecycleConfiguration|lifecycle configuration does not exist'; then
+      die "Cannot read the lifecycle rules of bucket '${BUCKET_NAME}': ${output}"
+    fi
+  fi
+
+  local retention="${STATE_RETENTION:-${current:-${DEFAULT_STATE_RETENTION}}}"
+  local description="old state versions expire after ${retention} days"
+  [[ "${retention}" != "never" ]] || description="old state versions never expire"
+  description="${description}, lock leftovers removed, incomplete uploads aborted after ${INCOMPLETE_UPLOAD_DAYS} days"
+
+  if [[ "${current}" == "${retention}" ]]; then
+    ok "${description}"
+    return 0
+  fi
+  change "set lifecycle rules on bucket '${BUCKET_NAME}': ${description}"
+  [[ "${DRY_RUN}" != true ]] || return 0
+
+  local file
+  file="$(mktemp)"
+  lifecycle_configuration "${retention}" >"${file}"
+  scw_write object bucket-lifecycle create "${BUCKET_NAME}" lifecycle-configuration="${file}" \
+    project-id="${PROJECT_ID}" region="${REGION}" >/dev/null || {
+    rm -f "${file}"
+    die "Cannot set the lifecycle rules of bucket '${BUCKET_NAME}'."
+  }
+  rm -f "${file}"
 }
 
 ensure_application() {
@@ -638,6 +747,7 @@ main() {
 
   ensure_project
   ensure_bucket
+  ensure_bucket_lifecycle
   ensure_application
   ensure_admin_membership
   ensure_secret

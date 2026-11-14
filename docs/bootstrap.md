@@ -12,7 +12,7 @@ Resource names derive from `--name` (default: `tf-foundation`):
 | Resource | Name | Settings enforced |
 |---|---|---|
 | Project | `<name>` | — |
-| Object Storage bucket for the Terraform state | `<name>-tfstate-<region>-<first 8 characters of the organization ID>` | versioning enabled, private |
+| Object Storage bucket for the Terraform state | `<name>-tfstate-<region>-<first 8 characters of the organization ID>` | versioning enabled, private, [lifecycle rules](#state-retention) |
 | IAM application used by Terraform | `<name>-ci` | member of the `Administrators` group |
 | API key of the IAM application | `<name>-ci` (in the description, API keys have no name) | default Project is the Project above |
 | Secret Manager secret holding the API key | `<name>-ci-key` | type `key_value`, protected |
@@ -89,12 +89,32 @@ scripts/bootstrap.sh --organization-id <organization-id>
 
 `--organization-id` is required and must match the Organization of the credentials in use.
 Add `--name <name>` and `--use-default-project` as needed, and keep them identical on every run.
+`--state-retention` is only needed to change the [state retention](#state-retention).
 The script shows who it is acting as and asks for confirmation before making changes; use `--yes` to skip the confirmation in non-interactive runs.
 Run `scripts/bootstrap.sh --help` for all options.
 
 At the end, the script prints the backend configuration to use for the Terraform state.
 It needs Terraform 1.11 or later, and enables encryption of the state and state locking (`use_lockfile`).
 The API key is stored in the secret, with the `access_key` and `secret_key` fields.
+
+## State retention
+
+Every apply writes a new version of the Terraform state, and every state lock writes and deletes a lock file: the versioning of the bucket keeps all of them.
+The script sets three lifecycle rules on the bucket:
+
+- old versions of the state expire 90 days after being replaced;
+- the delete markers left once the old versions of a lock file have expired are removed;
+- incomplete uploads are aborted after 7 days.
+
+An old version is only counted from the moment it is replaced: after a long period without any apply, the version replaced by the next one is still kept for the whole retention.
+It covers a broken state noticed late, at least a monthly cycle.
+
+Change the retention with `--state-retention <days>`, 30 days at least, or `--state-retention never` to keep every version.
+The script keeps the retention of the bucket on the next runs: the option does not have to be repeated.
+Old versions are not moved to colder storage: states are small, and restoring one from Glacier would delay a recovery.
+
+> [!WARNING]
+> The lifecycle rules of the bucket are replaced as a whole: rules added by hand are removed, and the script warns before doing so.
 
 ## Retrieving the API key
 
