@@ -37,6 +37,7 @@ variable "name" {
   type        = string
   description = "Name of the bootstrap resources: the `--name` option of `scripts/bootstrap.sh`."
   default     = "tf-foundation"
+  nullable    = false
 
   validation {
     condition     = can(regex("^[a-z0-9]([a-z0-9-]{0,37}[a-z0-9])?$", var.name))
@@ -48,6 +49,7 @@ variable "region" {
   type        = string
   description = "Region of the Terraform state bucket: the region used by `scripts/bootstrap.sh`, e.g. `fr-par`."
   default     = "fr-par"
+  nullable    = false
 
   validation {
     condition     = can(regex("^[a-z]{2}-[a-z]{3}$", var.region))
@@ -59,4 +61,5 @@ variable "use_default_project" {
   type        = bool
   description = "Whether `scripts/bootstrap.sh` was run with the `--use-default-project` option."
   default     = false
+  nullable    = false
 }
