@@ -35,6 +35,8 @@ resource "scaleway_billing_budget" "this" {
   enabled           = var.budget.enabled
 
   lifecycle {
+    # Also checked when the budget is disabled: its alerts are kept, and need
+    # recipients once it is enabled again.
     precondition {
       condition     = length(local.billing_emails) > 0
       error_message = "No email address found for the members of the `Billing Administrators` group: budget alerts would reach nobody. Add users to the group."

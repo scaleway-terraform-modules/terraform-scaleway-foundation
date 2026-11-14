@@ -7,10 +7,10 @@ See [`main.tf`](main.tf) for every setting, with its default value.
 
 ## How alerts work
 
-- Thresholds are percentages of the monthly limit. Without `thresholds`, alerts are sent at 80%, 95% and 100%.
+- Thresholds are percentages of the monthly limit. Without `thresholds`, alerts are sent at 80%, 95% and 100%. At least one threshold is required: to manage no budget, set `budget` to null.
 - Each alert emails all the users of the `Billing Administrators` group. Applications of the group are ignored, as they have no email.
 - The recipients are read at plan time: after adding or removing members of the group, run `terraform apply` to update them.
-- The plan fails if no user of the group has an email address, as alerts would then reach nobody.
+- The plan fails if no user of the group has an email address, as alerts would then reach nobody. This also applies to a disabled budget (`enabled = false`): its alerts are kept, and need recipients once it is enabled again.
 - Adding or removing a threshold only adds or removes that alert: the others are kept.
 
 ## Existing budget

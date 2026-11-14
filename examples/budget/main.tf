@@ -6,12 +6,13 @@ module "foundation" {
     limit = 1000
 
     # Percentages of the limit at which the users of the "Billing Administrators" group
-    # are emailed. Optional: defaults to [80, 95, 100]. Any number of thresholds can be
+    # are emailed. Optional: defaults to [80, 95, 100]. At least one threshold must be
     # set, each between 0 (excluded) and 100.
     thresholds = [50, 80, 95, 100]
 
     # Optional, defaults to true. Set to false to disable the budget without deleting
-    # it, and keep its alerts configured.
+    # it, and keep its alerts configured. The "Billing Administrators" group must
+    # still have a user with an email address.
     # enabled = false
   }
 }
