@@ -8,12 +8,18 @@ variable "budget" {
     enabled    = optional(bool, true)
     thresholds = optional(list(number), [80, 95, 100])
   })
-  description = "Monthly spending limit of the Organization, in euros (`limit`), and the thresholds at which the members of the `Billing Administrators` group are notified by email (`thresholds`, default `[80, 95, 100]`). Thresholds are percentages of the limit, greater than 0 and up to 100, the range accepted by Scaleway budget alerts. `enabled` (default `true`) disables the budget without deleting it. Leave null to manage no budget."
+  description = "Monthly spending limit of the Organization, in euros (`limit`), and the thresholds at which the members of the `Billing Administrators` group are notified by email (`thresholds`, default `[80, 95, 100]`). Thresholds are percentages of the limit, greater than 0 and up to 100, the range accepted by Scaleway budget alerts, and at least one is required. `enabled` (default `true`) disables the budget without deleting it. The group must have at least one user with an email address, even when the budget is disabled. Leave null to manage no budget."
   default     = null
 
   validation {
     condition     = var.budget == null ? true : var.budget.limit > 0
     error_message = "'budget.limit' must be a positive amount, in euros."
+  }
+
+  # A budget without alerts would notify nobody: set budget to null instead.
+  validation {
+    condition     = var.budget == null ? true : length(var.budget.thresholds) > 0
+    error_message = "'budget.thresholds' must contain at least one threshold. Set 'budget' to null to manage no budget."
   }
 
   validation {
