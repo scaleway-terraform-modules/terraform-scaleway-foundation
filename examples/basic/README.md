@@ -14,3 +14,5 @@ Then:
 terraform init
 terraform apply
 ```
+
+The outputs show the Organization, the bootstrap Project, the state bucket and the IAM application found by the module: check that they are the ones created by the script.
