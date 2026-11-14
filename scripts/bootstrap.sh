@@ -582,9 +582,18 @@ summary() {
     return 0
   fi
   info "${CHANGES} change(s) made."
+  # Same credentials as this run: only --profile has to be repeated, environment
+  # variables and SCW_PROFILE are inherited.
+  local profile_arg=""
+  [[ -z "${PROFILE}" ]] || profile_arg=" --profile ${PROFILE}"
   cat >&2 <<EOF
 
 Terraform API key: secret '${SECRET_NAME}' (${SECRET_ID}) in project '${PROJECT_NAME}', region ${REGION}.
+
+To store it in your CI secrets, read its two fields with the same credentials:
+
+  Access key: scw${profile_arg} secret version access secret-id=${SECRET_ID} revision=latest_enabled field=access_key raw=true region=${REGION}
+  Secret key: scw${profile_arg} secret version access secret-id=${SECRET_ID} revision=latest_enabled field=secret_key raw=true region=${REGION}
 
 Backend configuration for the Terraform state (Terraform >= 1.11):
 
