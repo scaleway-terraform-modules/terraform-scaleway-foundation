@@ -109,3 +109,12 @@ scw secret version access secret-id=<secret-id> revision=latest_enabled field=se
 
 The script never prints the secret key itself.
 When it replaces the API key, it adds a new version to the secret and disables the previous one: update the CI secrets with the new values.
+
+## Detecting drift
+
+The script is the reference for the bootstrap: run it with `--dry-run` to check every resource it manages and list what it would create or fix, without changing anything.
+Run it regularly, and after any manual change in the bootstrap Project or in the `Administrators` group.
+
+The module also warns about part of this drift on every plan (see [bootstrap drift](../README.md#bootstrap-drift)), but it cannot detect everything.
+In particular, if the Terraform IAM application leaves the `Administrators` group, it loses its rights: Terraform then fails with permission errors on its first reads, before reaching any warning.
+Run the script with the credentials of an Organization admin, not with the Terraform API key, to add it back to the group.

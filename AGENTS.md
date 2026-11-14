@@ -51,3 +51,5 @@ Co-Authored-By: Qwen3 Coder 30B (qwen3-coder:30b; Ollama; local) <noreply@localh
   - `terraform init -backend=false && terraform validate`
   - `tflint --init && tflint --call-module-type=local`
   - `terraform-docs .` to refresh the `README.md` documentation block.
+- Changes to `scripts/bootstrap.sh`, or to how the module finds or checks the bootstrap resources, also need the [manual test procedure](docs/testing.md).
+  It changes a real Organization with admin credentials: only run it when the operator explicitly asks and provides the test Organization. Otherwise, tell the operator it is needed and report it as not run.
