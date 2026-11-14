@@ -60,4 +60,9 @@ Use the same script options on every run, and the matching module inputs.
    ```
 
    Expected: the first run sets the lifecycle rules without expiration of old versions, and the dry run reports them as they are, with nothing to change.
-   Run the script with `--state-retention` and the retention shown by step 1 to restore it.
+
+9. Run `terraform plan`, then again with `state_retention` set to `never` in the test configuration.
+
+   Expected: no changes in both cases, a warning on the retention of old state versions in the first one, and no warnings in the second one.
+
+10. Run the script with `--state-retention` and the retention shown by step 1 to restore it, and restore `state_retention` in the test configuration.
