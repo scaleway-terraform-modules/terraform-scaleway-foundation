@@ -133,17 +133,6 @@ See the [budget example](examples/budget/README.md) for the settings, how alerts
 | <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources: the `--name` option of `scripts/bootstrap.sh`. | `string` | `"tf-foundation"` | no |
 | <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket: the region used by `scripts/bootstrap.sh`, e.g. `fr-par`. | `string` | `"fr-par"` | no |
 | <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether `scripts/bootstrap.sh` was run with the `--use-default-project` option. | `bool` | `false` | no |
-
-## Outputs
-
-| Name | Description |
-|------|-------------|
-| <a name="output_administrators_group_id"></a> [administrators_group_id](#output_administrators_group_id) | ID of the `Administrators` IAM group. |
-| <a name="output_budget_id"></a> [budget_id](#output_budget_id) | ID of the Organization budget. Null when `budget` is null. |
-| <a name="output_organization_id"></a> [organization_id](#output_organization_id) | ID of the Organization, taken from the provider configuration. |
-| <a name="output_project_id"></a> [project_id](#output_project_id) | ID of the Project holding the bootstrap resources. |
-| <a name="output_state_bucket_name"></a> [state_bucket_name](#output_state_bucket_name) | Name of the Terraform state bucket. |
-| <a name="output_terraform_application_id"></a> [terraform_application_id](#output_terraform_application_id) | ID of the IAM application used by Terraform. |
 <!-- END_TF_DOCS -->
 
 ## Authors

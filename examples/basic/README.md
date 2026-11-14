@@ -15,4 +15,4 @@ terraform init
 terraform apply
 ```
 
-The outputs show the Organization, the bootstrap Project, the state bucket and the IAM application found by the module: check that they are the ones created by the script.
+The plan fails if the state bucket or the IAM application found by the module were not created by the script: check that the inputs match its options.
