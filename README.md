@@ -27,7 +27,7 @@ See the [bootstrap documentation](docs/bootstrap.md) for the resources it manage
 ```hcl
 module "foundation" {
   source  = "scaleway-terraform-modules/foundation/scaleway"
-  version = "0.0.1"
+  version = "~> 0.1.0"
 
   # Only if scripts/bootstrap.sh was run with other values than the defaults:
   # name                = "tf-foundation"
