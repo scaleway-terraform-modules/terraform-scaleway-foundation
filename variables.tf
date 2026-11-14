@@ -87,6 +87,18 @@ variable "region" {
   }
 }
 
+variable "state_retention" {
+  type        = string
+  description = "Days during which old versions of the Terraform state are kept after being replaced, or `never`: the `--state-retention` option of `scripts/bootstrap.sh`, `90` when not set. At least `30`. Only checked: the bootstrap script sets it on the state bucket."
+  default     = "90"
+  nullable    = false
+
+  validation {
+    condition     = var.state_retention == "never" || (can(regex("^[0-9]{1,5}$", var.state_retention)) && try(tonumber(var.state_retention) >= 30, false))
+    error_message = "'state_retention' must be a number of days, 30 at least, or `never`."
+  }
+}
+
 variable "use_default_project" {
   type        = bool
   description = "Whether `scripts/bootstrap.sh` was run with the `--use-default-project` option."

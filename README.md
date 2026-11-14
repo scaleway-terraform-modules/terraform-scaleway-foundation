@@ -33,6 +33,7 @@ module "foundation" {
   # name                = "tf-foundation"
   # region              = "fr-par"
   # use_default_project = false
+  # state_retention     = 90
 }
 ```
 
@@ -87,7 +88,8 @@ The Organization owner can always replace or delete the policy, should access be
 The module only reads the bootstrap resources, but warns on every plan, without stopping it, when one of them has lost a setting of the bootstrap script:
 
 - versioning is not enabled on the state bucket: a corrupted or deleted state could not be restored;
-- the secret holding the API key is missing, or no longer protected against deletion.
+- the secret holding the API key is missing, or no longer protected against deletion;
+- the lifecycle rules of the state bucket are missing, or their retention of old state versions differs from the `state_retention` input.
 
 Run `scripts/bootstrap.sh` again to repair them.
 The module cannot detect every drift: see [detecting drift](docs/bootstrap.md#detecting-drift) to check the whole bootstrap.
@@ -132,6 +134,7 @@ See the [budget example](examples/budget/README.md) for the settings, how alerts
 | <a name="input_budget_webhook_urls"></a> [budget_webhook_urls](#input_budget_webhook_urls) | URLs called by every budget alert, in addition to the emails: Scaleway sends them a JSON POST request with the threshold reached. They must use HTTPS. Sensitive, as the URL is the only protection of a webhook. Requires `budget`. | `list(string)` | `[]` | no |
 | <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources: the `--name` option of `scripts/bootstrap.sh`. | `string` | `"tf-foundation"` | no |
 | <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket: the region used by `scripts/bootstrap.sh`, e.g. `fr-par`. | `string` | `"fr-par"` | no |
+| <a name="input_state_retention"></a> [state_retention](#input_state_retention) | Days during which old versions of the Terraform state are kept after being replaced, or `never`: the `--state-retention` option of `scripts/bootstrap.sh`, `90` when not set. At least `30`. Only checked: the bootstrap script sets it on the state bucket. | `string` | `"90"` | no |
 | <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether `scripts/bootstrap.sh` was run with the `--use-default-project` option. | `bool` | `false` | no |
 <!-- END_TF_DOCS -->
 

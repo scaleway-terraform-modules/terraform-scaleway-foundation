@@ -111,6 +111,7 @@ It covers a broken state noticed late, at least a monthly cycle.
 
 Change the retention with `--state-retention <days>`, 30 days at least, or `--state-retention never` to keep every version.
 The script keeps the retention of the bucket on the next runs: the option does not have to be repeated.
+Set the same value in the `state_retention` input of the module: it warns when the rules of the bucket differ from it.
 Old versions are not moved to colder storage: states are small, and restoring one from Glacier would delay a recovery.
 
 > [!WARNING]
