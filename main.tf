@@ -59,6 +59,22 @@ data "scaleway_object_bucket" "tfstate" {
   }
 }
 
+# The secret created by scripts/bootstrap.sh holds the only copy of the Terraform API
+# key, and is protected against deletion. Read inside the check, so that a deleted secret
+# is reported as a warning instead of failing the plan.
+check "terraform_secret" {
+  data "scaleway_secret" "terraform" {
+    name       = "${var.name}-ci-key"
+    project_id = local.project_id
+    region     = var.region
+  }
+
+  assert {
+    condition     = data.scaleway_secret.terraform.protected
+    error_message = "Secret '${var.name}-ci-key', holding the Terraform API key, is not protected: it can be deleted, and the key with it. Run `scripts/bootstrap.sh` again to protect it."
+  }
+}
+
 # --- Default Scaleway resources (read only) ------------------------------------------
 
 data "scaleway_iam_group" "administrators" {
