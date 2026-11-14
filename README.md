@@ -37,7 +37,7 @@ module "foundation" {
 ```
 
 The module works on the Organization set in the provider configuration, and fails at plan time if none is set.
-The inputs must match the options used with the bootstrap script: the module finds the bootstrap resources from them, and fails if they do not exist.
+The inputs must match the options used with the bootstrap script: the module finds the bootstrap resources from them, and fails if they do not exist, or if the state bucket or the IAM application were not created by the script (they lack its `owner=foundation-bootscript` tag).
 
 > [!WARNING]
 > Keep `name`, `region` and `use_default_project` identical to the options of the bootstrap script, on every run.

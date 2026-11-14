@@ -32,6 +32,16 @@ data "scaleway_account_project" "foundation" {
 data "scaleway_iam_application" "foundation" {
   name            = "${var.name}-ci"
   organization_id = local.organization_id
+
+  # The state bucket policy gives this application access to the Terraform state: never
+  # give it to an application the script did not create. The script tags it with
+  # owner=foundation-bootscript.
+  lifecycle {
+    postcondition {
+      condition     = try(contains(self.tags, "owner=foundation-bootscript"), false)
+      error_message = "IAM application '${var.name}-ci' has no `owner=foundation-bootscript` tag: it was not created by `scripts/bootstrap.sh`. Check that 'name' matches the `--name` option of the script."
+    }
+  }
 }
 
 data "scaleway_object_bucket" "tfstate" {
