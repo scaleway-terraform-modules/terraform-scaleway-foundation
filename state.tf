@@ -56,3 +56,12 @@ resource "scaleway_object_bucket_policy" "tfstate" {
     }
   }
 }
+
+# Versioning is enabled by scripts/bootstrap.sh, and lets a corrupted or deleted state be
+# restored. Warn only: the module does not manage the bucket.
+check "state_bucket_versioning" {
+  assert {
+    condition     = try(data.scaleway_object_bucket.tfstate.versioning[0].enabled, false)
+    error_message = "Versioning is not enabled on bucket '${local.bucket_name}': a corrupted or deleted Terraform state could not be restored. Run `scripts/bootstrap.sh` again to enable it."
+  }
+}
