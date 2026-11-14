@@ -378,12 +378,25 @@ ensure_bucket() {
 
   local output
   if output="$(scw_read object bucket get name="${BUCKET_NAME}" project-id="${PROJECT_ID}" region="${REGION}" \
-    -o template='{{ .EnableVersioning }}|{{ range .Tags }}{{ .Key }}={{ .Value }},{{ end }}' 2>&1)"; then
+    -o template='{{ .EnableVersioning }}|{{ .Owner }}|{{ range .ACL }}{{ .Grantee }} {{ end }}|{{ range .Tags }}{{ .Key }}={{ .Value }},{{ end }}' 2>&1)"; then
     has_owner_mark "${output}" || not_owned "Bucket '${BUCKET_NAME}'"
-    if [[ "${output%%|*}" == "true" ]]; then
-      ok "exists, versioning enabled"
+    local versioning owner grantees rest grantee private=true
+    IFS='|' read -r versioning owner grantees rest <<<"${output}"
+    # The private ACL only grants access to the owner of the bucket: any other grantee
+    # (another account, or a group such as AllUsers for public-read) means it is not.
+    for grantee in ${grantees}; do
+      [[ "${grantee}" == "${owner}" ]] || private=false
+    done
+
+    local fixes=""
+    [[ "${versioning}" == "true" ]] || fixes="enable versioning"
+    [[ "${private}" == true ]] || fixes="${fixes:+${fixes} and }set the private ACL"
+    if [[ -z "${fixes}" ]]; then
+      ok "exists, versioning enabled, private"
     else
-      change "enable versioning on bucket '${BUCKET_NAME}'"
+      # A single update fixes both: it always sets versioning and the ACL, and keeps the
+      # tags only when they are given again.
+      change "${fixes} on bucket '${BUCKET_NAME}'"
       scw_write object bucket update name="${BUCKET_NAME}" project-id="${PROJECT_ID}" region="${REGION}" \
         enable-versioning=true acl=private tags.0="${OWNER_TAG}" >/dev/null
     fi
