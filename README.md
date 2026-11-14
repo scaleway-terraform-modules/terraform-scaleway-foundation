@@ -20,7 +20,8 @@ See the [bootstrap documentation](docs/bootstrap.md) for the resources it manage
 ## Usage
 
 - Bootstrap the Organization with [`scripts/bootstrap.sh`](#bootstrap), and use the backend configuration it prints.
-- Setup the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file, with the API key stored in the `<name>-ci-key` secret and the Organization ID (provider `organization_id` argument, `SCW_DEFAULT_ORGANIZATION_ID` environment variable or `scw` profile).
+- Set the [environment variables](#environment-variables) below in the CI running Terraform.
+- Setup the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file.
 - Include this module in your tf file. Refer to [documentation](https://www.terraform.io/docs/modules/sources.html#generic-git-repository).
 
 ```hcl
@@ -37,6 +38,22 @@ module "foundation" {
 
 The module works on the Organization set in the provider configuration, and fails at plan time if none is set.
 The inputs must match the options used with the bootstrap script: the module finds the bootstrap resources from them, and fails if they do not exist.
+
+### Environment variables
+
+Terraform uses the API key created by the bootstrap script, stored in the `<name>-ci-key` secret (see [how to retrieve it](docs/bootstrap.md#retrieving-the-api-key)).
+The S3 backend and the Scaleway provider read it from different variables, so set both:
+
+| Variable | Used by | Value |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID` | S3 backend | `access_key` field of the secret |
+| `AWS_SECRET_ACCESS_KEY` | S3 backend | `secret_key` field of the secret |
+| `SCW_ACCESS_KEY` | Scaleway provider | `access_key` field of the secret |
+| `SCW_SECRET_KEY` | Scaleway provider | `secret_key` field of the secret |
+| `SCW_DEFAULT_ORGANIZATION_ID` | Scaleway provider | ID of the Organization |
+
+The S3 backend ignores the `SCW_*` variables, and the Scaleway provider ignores the `AWS_*` ones.
+The provider settings can also come from its arguments or from a `scw` profile instead.
 
 ### Terraform state bucket policy
 
