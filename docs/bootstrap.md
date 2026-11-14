@@ -81,3 +81,17 @@ Run `scripts/bootstrap.sh --help` for all options.
 At the end, the script prints the backend configuration to use for the Terraform state.
 It needs Terraform 1.11 or later, and enables encryption of the state and state locking (`use_lockfile`).
 The API key is stored in the secret, with the `access_key` and `secret_key` fields.
+
+## Retrieving the API key
+
+The API key is meant for the CI running Terraform: store its two fields in the secrets of your CI.
+The script prints the commands to read them, with the secret ID and region filled in.
+They can be run again at any time, by anyone allowed to read the secret:
+
+```bash
+scw secret version access secret-id=<secret-id> revision=latest_enabled field=access_key raw=true region=<region>
+scw secret version access secret-id=<secret-id> revision=latest_enabled field=secret_key raw=true region=<region>
+```
+
+The script never prints the secret key itself.
+When it replaces the API key, it adds a new version to the secret and disables the previous one: update the CI secrets with the new values.
