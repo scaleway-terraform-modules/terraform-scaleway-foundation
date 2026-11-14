@@ -38,6 +38,15 @@ data "scaleway_object_bucket" "tfstate" {
   name       = local.bucket_name
   project_id = local.project_id
   region     = var.region
+
+  # The module replaces the policy of this bucket: never do it on a bucket the script
+  # did not create. The script tags it with owner=foundation-bootscript.
+  lifecycle {
+    postcondition {
+      condition     = try(self.tags["owner"], null) == "foundation-bootscript"
+      error_message = "Bucket '${local.bucket_name}' has no `owner=foundation-bootscript` tag: it was not created by `scripts/bootstrap.sh`. Check that 'name', 'region' and 'use_default_project' match the options of the script."
+    }
+  }
 }
 
 # --- Default Scaleway resources (read only) ------------------------------------------
