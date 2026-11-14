@@ -82,6 +82,16 @@ Bucket policies cannot name a group, so the policy lists the group members: afte
 The plan fails if the group has no users, as only the Organization owner could then reach the state.
 The Organization owner can always replace or delete the policy, should access be lost.
 
+### Bootstrap drift
+
+The module only reads the bootstrap resources, but warns on every plan, without stopping it, when one of them has lost a setting of the bootstrap script:
+
+- versioning is not enabled on the state bucket: a corrupted or deleted state could not be restored;
+- the secret holding the API key is missing, or no longer protected against deletion.
+
+Run `scripts/bootstrap.sh` again to repair them.
+The module cannot detect every drift: see [detecting drift](docs/bootstrap.md#detecting-drift) to check the whole bootstrap.
+
 ### Budget
 
 With the optional `budget` input, the module sets a monthly spending limit on the Organization, and emails the users of the `Billing Administrators` group when spending reaches thresholds expressed as percentages of that limit (80%, 95% and 100% by default).
