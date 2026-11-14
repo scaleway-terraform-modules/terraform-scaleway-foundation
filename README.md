@@ -95,6 +95,7 @@ The module cannot detect every drift: see [detecting drift](docs/bootstrap.md#de
 ### Budget
 
 With the optional `budget` input, the module sets a monthly spending limit on the Organization, and emails the users of the `Billing Administrators` group when spending reaches thresholds expressed as percentages of that limit (80%, 95% and 100% by default).
+Alerts can also be emailed to extra addresses, such as a shared mailbox, and sent to webhooks with the `budget_webhook_urls` input, for example to an alerting system.
 
 See the [budget example](examples/budget/README.md) for the settings, how alerts work, and how to import a budget already created in the Scaleway console.
 
@@ -113,6 +114,7 @@ See the [budget example](examples/budget/README.md) for the settings, how alerts
 | [scaleway_billing_budget.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget) | resource |
 | [scaleway_billing_budget_alert.this](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert) | resource |
 | [scaleway_billing_budget_alert_notification.email](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert_notification) | resource |
+| [scaleway_billing_budget_alert_notification.webhook](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/billing_budget_alert_notification) | resource |
 | [scaleway_object_bucket_policy.tfstate](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/object_bucket_policy) | resource |
 | [scaleway_account_project.foundation](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_project) | data source |
 | [scaleway_account_projects.organization](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/data-sources/account_projects) | data source |
@@ -126,7 +128,8 @@ See the [budget example](examples/budget/README.md) for the settings, how alerts
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_budget"></a> [budget](#input_budget) | Monthly spending limit of the Organization, in euros (`limit`), and the thresholds at which the members of the `Billing Administrators` group are notified by email (`thresholds`, default `[80, 95, 100]`). Thresholds are percentages of the limit, greater than 0 and up to 100, the range accepted by Scaleway budget alerts, and at least one is required. `enabled` (default `true`) disables the budget without deleting it. The group must have at least one user with an email address, even when the budget is disabled. Leave null to manage no budget. | ```object({ limit = number enabled = optional(bool, true) thresholds = optional(list(number), [80, 95, 100]) })``` | `null` | no |
+| <a name="input_budget"></a> [budget](#input_budget) | Monthly spending limit of the Organization, in euros (`limit`), and the thresholds at which the members of the `Billing Administrators` group are notified by email (`thresholds`, default `[80, 95, 100]`). Thresholds are percentages of the limit, greater than 0 and up to 100, the range accepted by Scaleway budget alerts, with at least one and at most 10 of them. `additional_emails` (default `[]`) adds email addresses notified along with the group. `enabled` (default `true`) disables the budget without deleting it. The group must have at least one user with an email address, even when the budget is disabled. Leave null to manage no budget. | ```object({ limit = number additional_emails = optional(list(string), []) enabled = optional(bool, true) thresholds = optional(list(number), [80, 95, 100]) })``` | `null` | no |
+| <a name="input_budget_webhook_urls"></a> [budget_webhook_urls](#input_budget_webhook_urls) | URLs called by every budget alert, in addition to the emails: Scaleway sends them a JSON POST request with the threshold reached. They must use HTTPS. Sensitive, as the URL is the only protection of a webhook. Requires `budget`. | `list(string)` | `[]` | no |
 | <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources: the `--name` option of `scripts/bootstrap.sh`. | `string` | `"tf-foundation"` | no |
 | <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket: the region used by `scripts/bootstrap.sh`, e.g. `fr-par`. | `string` | `"fr-par"` | no |
 | <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether `scripts/bootstrap.sh` was run with the `--use-default-project` option. | `bool` | `false` | no |

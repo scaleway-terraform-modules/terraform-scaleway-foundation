@@ -12,11 +12,20 @@ module "foundation" {
     # set, each between 0 (excluded) and 100.
     thresholds = [50, 80, 95, 100]
 
+    # Optional, defaults to []. Email addresses notified along with the users of the
+    # "Billing Administrators" group, e.g. a shared mailbox.
+    # additional_emails = ["finance@example.com"]
+
     # Optional, defaults to true. Set to false to disable the budget without deleting
     # it, and keep its alerts configured. The "Billing Administrators" group must
     # still have a user with an email address.
     # enabled = false
   }
+
+  # Optional, defaults to []. HTTPS URLs called by every alert, e.g. the generic webhook
+  # of an alerting system. Sensitive: keep them out of version control, e.g. in a
+  # sensitive variable set from the secrets of the CI.
+  # budget_webhook_urls = var.budget_webhook_urls
 }
 
 # If a budget was already created in the Scaleway console, import it before the first
