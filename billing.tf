@@ -37,7 +37,7 @@ resource "scaleway_billing_budget" "this" {
   lifecycle {
     precondition {
       condition     = length(local.billing_emails) > 0
-      error_message = "No email address found for the members of the Billing Administrators group: budget alerts would reach nobody. Add users to the group."
+      error_message = "No email address found for the members of the `Billing Administrators` group: budget alerts would reach nobody. Add users to the group."
     }
   }
 }
