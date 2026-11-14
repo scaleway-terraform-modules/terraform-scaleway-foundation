@@ -29,10 +29,10 @@ Use the same script options on every run, and the matching module inputs.
 
    Expected: no changes, and no warnings.
 
-4. Make the bootstrap drift. Suspend versioning on the state bucket, and remove the protection of the secret:
+4. Make the bootstrap drift. Suspend versioning on the state bucket and make it public, and remove the protection of the secret:
 
    ```bash
-   scw object bucket update name=<state-bucket> region=<region> enable-versioning=false
+   scw object bucket update name=<state-bucket> region=<region> enable-versioning=false acl=public-read
    scw secret secret unprotect secret-id=<secret-id> region=<region>
    ```
 
@@ -41,10 +41,11 @@ Use the same script options on every run, and the matching module inputs.
 5. Run `terraform plan` again.
 
    Expected: no changes, and one warning for the bucket versioning and one for the secret protection.
+   The module does not check the ACL of the bucket: the script repairs it.
 
 6. Run the script again, without `--dry-run`.
 
-   Expected: it enables versioning on the bucket and protects the secret again.
+   Expected: it enables versioning and sets the private ACL on the bucket, and protects the secret again.
 
 7. Run `terraform plan` a last time.
 
