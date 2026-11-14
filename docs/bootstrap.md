@@ -61,6 +61,18 @@ The script uses the same credentials as the `scw` CLI, either:
 - or a `scw` profile, with `--profile <name>` (or the `SCW_PROFILE` environment variable).
 
 Using both at the same time is refused, to avoid running with unexpected credentials.
+
+### Environment variables
+
+| Variable | Required | Use |
+|---|---|---|
+| `SCW_ACCESS_KEY` | Without a profile | Access key of an Organization admin. |
+| `SCW_SECRET_KEY` | Without a profile | Secret key of an Organization admin. |
+| `SCW_PROFILE` | No | `scw` profile to use, instead of `--profile`. Refused with `SCW_ACCESS_KEY` / `SCW_SECRET_KEY`. |
+| `SCW_DEFAULT_REGION` | No | Region of the bucket and of the secret, when `--region` is not set. |
+| `SCW_DEFAULT_ORGANIZATION_ID` | No | Only checked: the script stops if it differs from `--organization-id`. |
+
+No other variable is needed: the Organization is always given with `--organization-id`.
 The script never takes keys as arguments, and never writes the Terraform API key into your `scw` configuration.
 
 ## Running it
