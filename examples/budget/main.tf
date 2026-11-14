@@ -1,3 +1,5 @@
+provider "scaleway" {}
+
 module "foundation" {
   source = "../.."
 
@@ -24,8 +26,3 @@ module "foundation" {
 #   to = module.foundation.scaleway_billing_budget.this[0]
 #   id = "<budget-id>"
 # }
-
-output "budget_id" {
-  description = "ID of the Organization budget."
-  value       = module.foundation.budget_id
-}
