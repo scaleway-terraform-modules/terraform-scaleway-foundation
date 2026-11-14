@@ -103,17 +103,17 @@ See the [budget example](examples/budget/README.md) for the settings, how alerts
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_budget"></a> [budget](#input_budget) | Monthly spending limit of the Organization, in euros, and the thresholds (percentages of the limit) at which the members of the Billing Administrators group are notified by email. Leave null to manage no budget. | ```object({ limit = number enabled = optional(bool, true) thresholds = optional(list(number), [80, 95, 100]) })``` | `null` | no |
-| <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources (the --name of scripts/bootstrap.sh). | `string` | `"tf-foundation"` | no |
-| <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket (the region used by scripts/bootstrap.sh). | `string` | `"fr-par"` | no |
-| <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether scripts/bootstrap.sh was run with --use-default-project. | `bool` | `false` | no |
+| <a name="input_budget"></a> [budget](#input_budget) | Monthly spending limit of the Organization, in euros (`limit`), and the thresholds at which the members of the `Billing Administrators` group are notified by email (`thresholds`, default `[80, 95, 100]`). Thresholds are percentages of the limit, greater than 0 and up to 100, the range accepted by Scaleway budget alerts. `enabled` (default `true`) disables the budget without deleting it. Leave null to manage no budget. | ```object({ limit = number enabled = optional(bool, true) thresholds = optional(list(number), [80, 95, 100]) })``` | `null` | no |
+| <a name="input_name"></a> [name](#input_name) | Name of the bootstrap resources: the `--name` option of `scripts/bootstrap.sh`. | `string` | `"tf-foundation"` | no |
+| <a name="input_region"></a> [region](#input_region) | Region of the Terraform state bucket: the region used by `scripts/bootstrap.sh`, e.g. `fr-par`. | `string` | `"fr-par"` | no |
+| <a name="input_use_default_project"></a> [use_default_project](#input_use_default_project) | Whether `scripts/bootstrap.sh` was run with the `--use-default-project` option. | `bool` | `false` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| <a name="output_administrators_group_id"></a> [administrators_group_id](#output_administrators_group_id) | ID of the Administrators IAM group. |
-| <a name="output_budget_id"></a> [budget_id](#output_budget_id) | ID of the Organization budget, or null when no budget is managed. |
+| <a name="output_administrators_group_id"></a> [administrators_group_id](#output_administrators_group_id) | ID of the `Administrators` IAM group. |
+| <a name="output_budget_id"></a> [budget_id](#output_budget_id) | ID of the Organization budget. Null when `budget` is null. |
 | <a name="output_organization_id"></a> [organization_id](#output_organization_id) | ID of the Organization, taken from the provider configuration. |
 | <a name="output_project_id"></a> [project_id](#output_project_id) | ID of the Project holding the bootstrap resources. |
 | <a name="output_state_bucket_name"></a> [state_bucket_name](#output_state_bucket_name) | Name of the Terraform state bucket. |

@@ -52,7 +52,7 @@ resource "scaleway_object_bucket_policy" "tfstate" {
   lifecycle {
     precondition {
       condition     = length(data.scaleway_iam_group.administrators.user_ids) > 0
-      error_message = "The Administrators group has no users: the policy would leave only the Organization owner able to reach the Terraform state."
+      error_message = "The `Administrators` group has no users: the policy would leave only the Organization owner able to reach the Terraform state."
     }
   }
 }
