@@ -35,8 +35,9 @@ It never deletes anything else; the only deletions are the API keys it created e
 
 Terraform only reads these resources, with one exception: the policy of the state bucket is managed by the module (see the [module documentation](../README.md#terraform-state-bucket-policy)), and never by the script.
 
-The API key gives full admin rights on the Organization: anyone who can read the secret is an Organization admin.
-Only grant access to the bootstrap Project to Organization admins.
+> [!IMPORTANT]
+> The API key gives full admin rights on the Organization: anyone who can read the secret is an Organization admin.
+> Only grant access to the bootstrap Project to Organization admins.
 
 ### Using the default Project
 
@@ -44,8 +45,9 @@ Scaleway creates every Organization with a Project named `default`, whose ID is 
 With `--use-default-project`, the script puts the bucket and the secret in that Project instead of creating a dedicated one.
 The script then uses the `default` Project as it is: it does not need the ownership mark on it, and never changes it.
 
-This saves a Project, but the `default` Project is usually widely accessible: everyone who can read secrets in it can read the admin API key.
-Prefer a dedicated Project unless access to the `default` Project is limited to Organization admins.
+> [!WARNING]
+> This saves a Project, but the `default` Project is usually widely accessible: everyone who can read secrets in it can read the admin API key.
+> Prefer a dedicated Project unless access to the `default` Project is limited to Organization admins.
 
 ## Requirements
 
