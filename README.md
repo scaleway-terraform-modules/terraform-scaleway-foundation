@@ -21,7 +21,7 @@ See the [bootstrap documentation](docs/bootstrap.md) for the resources it manage
 
 - Bootstrap the Organization with [`scripts/bootstrap.sh`](#bootstrap), and use the backend configuration it prints.
 - Set the [environment variables](#environment-variables) below in the CI running Terraform.
-- Setup the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file.
+- Set up the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file.
 - Include this module in your tf file. Refer to [documentation](https://www.terraform.io/docs/modules/sources.html#generic-git-repository).
 
 ```hcl
@@ -39,6 +39,15 @@ module "foundation" {
 The module works on the Organization set in the provider configuration, and fails at plan time if none is set.
 The inputs must match the options used with the bootstrap script: the module finds the bootstrap resources from them, and fails if they do not exist.
 
+> [!WARNING]
+> Keep `name`, `region` and `use_default_project` identical to the options of the bootstrap script, on every run.
+> Changing them points the module to other bootstrap resources: it then moves the state bucket policy to the new bucket, and the previous bucket is no longer protected by it.
+> To change them, bootstrap again with the new options, migrate the state to the new bucket (`terraform init -migrate-state` with the backend configuration printed by the script), then apply the module with the new inputs.
+> The script refuses to move its secret to another region or Project: changing `region` or `use_default_project` also needs a new `name`.
+> It never deletes the previous resources: delete them by hand once they are no longer used.
+
+See the [examples](examples) folder for runnable configurations: [basic](examples/basic/README.md) setup with the default options, and [budget](examples/budget/README.md).
+
 ### Environment variables
 
 Terraform uses the API key created by the bootstrap script, stored in the `<name>-ci-key` secret (see [how to retrieve it](docs/bootstrap.md#retrieving-the-api-key)).
@@ -54,6 +63,10 @@ The S3 backend and the Scaleway provider read it from different variables, so se
 
 The S3 backend ignores the `SCW_*` variables, and the Scaleway provider ignores the `AWS_*` ones.
 The provider settings can also come from its arguments or from a `scw` profile instead.
+
+> [!IMPORTANT]
+> The API key gives full admin rights on the Organization: anyone who can read the secret, or the CI secrets holding the key, is an Organization admin.
+> Only give access to them to Organization admins.
 
 ### Terraform state bucket policy
 
