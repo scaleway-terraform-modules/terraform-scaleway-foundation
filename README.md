@@ -19,7 +19,7 @@ See the [bootstrap documentation](docs/bootstrap.md) for the resources it manage
 
 ## Usage
 
-- Bootstrap the Organization with [`scripts/bootstrap.sh`](#bootstrap), and use the backend configuration it prints.
+- Bootstrap the Organization with [`scripts/bootstrap.sh`](#bootstrap), and use the backend configuration and the module inputs it prints.
 - Set the [environment variables](#environment-variables) below in the CI running Terraform.
 - Set up the [scaleway provider](https://www.terraform.io/docs/providers/scaleway/index.html) in your tf file.
 - Include this module in your tf file. Refer to [documentation](https://www.terraform.io/docs/modules/sources.html#generic-git-repository).
@@ -43,7 +43,7 @@ The inputs must match the options used with the bootstrap script: the module fin
 > [!WARNING]
 > Keep `name`, `region` and `use_default_project` identical to the options of the bootstrap script, on every run.
 > Changing them points the module to other bootstrap resources: it then moves the state bucket policy to the new bucket, and the previous bucket is no longer protected by it.
-> To change them, bootstrap again with the new options, migrate the state to the new bucket (`terraform init -migrate-state` with the backend configuration printed by the script), then apply the module with the new inputs.
+> To change them, bootstrap again with the new options, migrate the state to the new bucket (`terraform init -migrate-state` with the backend configuration printed by the script), then apply the module with the new inputs, also printed by the script.
 > The script refuses to move its secret to another region or Project: changing `region` or `use_default_project` also needs a new `name`.
 > It never deletes the previous resources: delete them by hand once they are no longer used.
 
