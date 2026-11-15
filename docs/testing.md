@@ -1,6 +1,6 @@
 # Testing
 
-The module and the bootstrap script must agree on the bootstrap resources: their names, their ownership tag and their settings.
+The module and the bootstrap script must agree on the bootstrap resources, as described by their [contract](bootstrap.md#contract-with-the-module): their names, their ownership tag and their settings.
 No automated test checks them against Scaleway: test by hand on a test Organization any change to the script, or to how the module finds or checks the bootstrap resources, and run this procedure before each release.
 
 The procedure leaves the test Organization as it found it, so it can be run again on the same Organization.
