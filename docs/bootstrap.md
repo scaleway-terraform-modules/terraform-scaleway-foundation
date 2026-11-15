@@ -54,6 +54,7 @@ The IAM policy of the application only grants what the module needs:
 | Bootstrap Project | `SecretManagerReadOnly` | Checking that the secret holding the API key is protected, without reading the key. |
 
 The application cannot change IAM: neither its own policy, nor its API keys.
+Its API key cannot manage other resources: the script restores the rules of the policy on every run, so manage them in another configuration, with another identity.
 Object Storage rights cannot be limited to a bucket by IAM: they cover every bucket of the bootstrap Project, and the state bucket policy limits access to the state bucket.
 
 > [!WARNING]
