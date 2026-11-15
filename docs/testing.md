@@ -9,7 +9,7 @@ The procedure leaves the test Organization as it found it, so it can be run agai
 
 - An Organization used only for tests, already bootstrapped by the script.
 - The credentials of an Organization admin, for the script and the `scw` commands.
-- A Terraform configuration using the module from the working copy (`source` set to its path), with the backend configuration printed by the script, and the [environment variables](../README.md#environment-variables) of the Terraform API key.
+- A Terraform configuration using the module from the working copy (`source` set to its path), with the backend configuration and the module inputs printed by the script, and the [environment variables](../README.md#environment-variables) of the Terraform API key.
 
 Use the same script options on every run, and the matching module inputs.
 
@@ -47,6 +47,7 @@ Use the same script options on every run, and the matching module inputs.
 6. Run the script again, without `--dry-run`.
 
    Expected: it enables versioning and sets the private ACL on the bucket, sets its lifecycle rules with the default retention, and protects the secret again.
+   The module inputs it prints match the test configuration.
 
 7. Run `terraform plan` a last time.
 

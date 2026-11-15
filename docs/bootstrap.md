@@ -93,7 +93,8 @@ Add `--name <name>` and `--use-default-project` as needed, and keep them identic
 The script shows who it is acting as and asks for confirmation before making changes; use `--yes` to skip the confirmation in non-interactive runs.
 Run `scripts/bootstrap.sh --help` for all options.
 
-At the end, the script prints the backend configuration to use for the Terraform state.
+At the end, the script prints the backend configuration to use for the Terraform state, and a `module` block with the inputs matching its options, ready to copy.
+Neither is printed by a dry run.
 It needs Terraform 1.11 or later, and enables encryption of the state and state locking (`use_lockfile`).
 The API key is stored in the secret, with the `access_key` and `secret_key` fields.
 
@@ -148,7 +149,8 @@ The [manual test procedure](testing.md) checks that both sides agree on a real O
 
 ### Inputs and names
 
-The module inputs mirror the options of the script, with the same defaults and the same validation rules:
+The module inputs mirror the options of the script, with the same defaults and the same validation rules.
+The script prints them at the end of a run, in a `module` block: it must be updated along with them.
 
 | Script option | Module input | Default | Used for |
 |---|---|---|---|

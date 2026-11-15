@@ -81,6 +81,7 @@ CHANGES=0
 
 PROJECT_ID=""
 BUCKET_EXISTS=false
+STATE_RETENTION_SET=""
 APPLICATION_ID=""
 SECRET_ID=""
 
@@ -496,6 +497,8 @@ ensure_bucket_lifecycle() {
   fi
 
   local retention="${STATE_RETENTION:-${current:-${DEFAULT_STATE_RETENTION}}}"
+  # Retention of the bucket at the end of the run, printed with the module inputs.
+  STATE_RETENTION_SET="${retention}"
   local description="old state versions expire after ${retention} days"
   [[ "${retention}" != "never" ]] || description="old state versions never expire"
   description="${description}, lock leftovers removed, incomplete uploads aborted after ${INCOMPLETE_UPLOAD_DAYS} days"
@@ -732,6 +735,29 @@ Backend configuration for the Terraform state (Terraform >= 1.11):
       skip_requesting_account_id  = true
       use_lockfile                = true # State locking
     }
+  }
+EOF
+  module_inputs
+}
+
+# Module inputs matching the options of this run: the module finds the bootstrap
+# resources from them, and checks the retention of the state bucket against
+# state_retention.
+module_inputs() {
+  local retention="${STATE_RETENTION_SET}"
+  [[ "${retention}" != "never" ]] || retention='"never"'
+  cat >&2 <<EOF
+
+Module inputs, matching the options of this run:
+
+  module "foundation" {
+    source = "scaleway-terraform-modules/foundation/scaleway"
+    # version: use the constraint of the README's usage example
+
+    name                = "${NAME}"
+    region              = "${REGION}"
+    use_default_project = ${USE_DEFAULT_PROJECT}
+    state_retention     = ${retention}
   }
 EOF
 }
