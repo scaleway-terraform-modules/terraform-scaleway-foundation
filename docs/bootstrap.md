@@ -13,7 +13,8 @@ Resource names derive from `--name` (default: `tf-foundation`):
 |---|---|---|
 | Project | `<name>` | — |
 | Object Storage bucket for the Terraform state | `<name>-tfstate-<region>-<first 8 characters of the organization ID>` | versioning enabled, private, [lifecycle rules](#state-retention) |
-| IAM application used by Terraform | `<name>-ci` | member of the `Administrators` group |
+| IAM application used by Terraform | `<name>-ci` | not a member of the `Administrators` group |
+| IAM policy of the IAM application | `<name>-ci` | attached to the IAM application, with [its rights](#rights-of-the-terraform-application) only |
 | API key of the IAM application | `<name>-ci` (in the description, API keys have no name) | default Project is the Project above |
 | Secret Manager secret holding the API key | `<name>-ci-key` | type `key_value`, protected |
 
@@ -36,8 +37,31 @@ It never deletes anything else; the only deletions are the API keys it created e
 Terraform only reads these resources, with one exception: the policy of the state bucket is managed by the module (see the [module documentation](../README.md#terraform-state-bucket-policy)), and never by the script.
 
 > [!IMPORTANT]
-> The API key gives full admin rights on the Organization: anyone who can read the secret is an Organization admin.
+> The API key holds the [rights of the Terraform application](#rights-of-the-terraform-application), including the management of billing and payment information.
 > Only grant access to the bootstrap Project to Organization admins.
+
+### Rights of the Terraform application
+
+The IAM policy of the application only grants what the module needs:
+
+| Scope | Permission sets | Used for |
+|---|---|---|
+| Organization | `ProjectReadOnly` | Finding the bootstrap Project. |
+| Organization | `IAMApplicationReadOnly`, `IAMGroupReadOnly`, `IAMUserReadOnly` | Reading the Terraform application, the `Administrators` and `Billing Administrators` groups, and the email addresses of their users. |
+| Organization | `BillingManager` | Managing the budget. Granted even without a budget, and broader than needed: Scaleway has no permission set for budgets only. |
+| Bootstrap Project | `ObjectStorageBucketsRead`, `ObjectStorageBucketPolicyFullAccess` | Reading the configuration of the state bucket, and managing its policy. |
+| Bootstrap Project | `ObjectStorageObjectsRead`, `ObjectStorageObjectsWrite`, `ObjectStorageObjectsDelete` | Reading and writing the Terraform state and its lock file. |
+| Bootstrap Project | `SecretManagerReadOnly` | Checking that the secret holding the API key is protected, without reading the key. |
+
+The application cannot change IAM: neither its own policy, nor its API keys.
+Object Storage rights cannot be limited to a bucket by IAM: they cover every bucket of the bootstrap Project, and the state bucket policy limits access to the state bucket.
+
+> [!WARNING]
+> With `--use-default-project`, the Object Storage rights cover every bucket of the `default` Project.
+
+Earlier versions of the script made the application a member of the `Administrators` group instead, with full rights on the Organization: the script now removes this membership.
+When upgrading, apply the module of the new version first, so that the state bucket policy grants the application access to the bucket, then run the script.
+If the script runs first, Terraform cannot read the state bucket anymore: an Organization admin can repair it with `terraform apply`, using their own credentials.
 
 ### Using the default Project
 
@@ -135,11 +159,11 @@ When it replaces the API key, it adds a new version to the secret and disables t
 ## Detecting drift
 
 The script is the reference for the bootstrap: run it with `--dry-run` to check every resource it manages and list what it would create or fix, without changing anything.
-Run it regularly, and after any manual change in the bootstrap Project or in the `Administrators` group.
+Run it regularly, and after any manual change in the bootstrap Project or in IAM.
 
 The module also warns about part of this drift on every plan (see [bootstrap drift](../README.md#bootstrap-drift)), but it cannot detect everything.
-In particular, if the Terraform IAM application leaves the `Administrators` group, it loses its rights: Terraform then fails with permission errors on its first reads, before reaching any warning.
-Run the script with the credentials of an Organization admin, not with the Terraform API key, to add it back to the group.
+In particular, if the IAM policy of the Terraform application is deleted or changed, Terraform fails with permission errors on its first reads, before reaching any warning.
+Run the script with the credentials of an Organization admin, not with the Terraform API key, to repair the policy.
 
 ## Contract with the module
 
@@ -167,7 +191,13 @@ Both sides build the same names from these values:
 | State bucket | `<name>-tfstate-<region>-<first 8 characters of the Organization ID>` | `local.bucket_name` |
 | Terraform IAM application | `<name>-ci` | `data.scaleway_iam_application.foundation` |
 | Secret holding the API key | `<name>-ci-key` | `check.foundation_secret` |
-| Group of the Terraform application | `Administrators` | `data.scaleway_iam_group.administrators` |
+| IAM policy of the Terraform application | `<name>-ci` | not read |
+| Group whose members get full access to the state | `Administrators` | `data.scaleway_iam_group.administrators` |
+
+### Rights and state bucket policy
+
+The [permission sets of the Terraform application](#rights-of-the-terraform-application), set by the script, must cover everything the module does, and the `Terraform` statement of the state bucket policy, managed by the module (`state.tf`), must allow it on the state bucket.
+A module feature needing more rights adds them to the script in the same pull request.
 
 ### Ownership tag
 
@@ -190,7 +220,7 @@ Settings enforced by the script but not checked by the module, on purpose:
 
 | Setting | Reason |
 |---|---|
-| Membership of the Terraform IAM application in `Administrators` | The module cannot check it: without it, Terraform fails on its first reads, before any check. See [detecting drift](#detecting-drift). |
+| IAM policy of the Terraform application, and its absence from `Administrators` | The module cannot check its own rights: without them, Terraform fails on its first reads, before any check, and reading IAM policies would need more rights. See [detecting drift](#detecting-drift). |
 | Private ACL of the state bucket | The bucket policy managed by the module already restricts access whenever Terraform runs. The ACL matters when the policy is missing, which only the script's dry run can report. |
 | API key, its default Project, and its storage in the secret | The module does not use them: the API key is given to Terraform by the CI. |
 | Type of the secret (`key_value`) | Only used to retrieve the API key, outside Terraform. |

@@ -36,13 +36,15 @@ resource "scaleway_object_bucket_policy" "tfstate" {
         Condition = local.tls_only
       },
       {
-        # Granted explicitly, so that Terraform keeps access to its own state even if
-        # its application leaves the Administrators group. Without it, an apply could
-        # lock Terraform out of the state it is about to save.
+        # The Terraform application is not a member of the Administrators group: it is
+        # granted access here. It needs the state files, the configuration of the bucket
+        # and its policy, and bucket policies cannot grant the policy actions alone: only
+        # s3:* covers them. Its IAM policy, set by scripts/bootstrap.sh, limits what it
+        # can actually do on the bucket.
         Sid       = "Terraform"
         Effect    = "Allow"
         Principal = { SCW = "application_id:${data.scaleway_iam_application.foundation.id}" }
-        Action    = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Action    = ["s3:*"]
         Resource  = local.tfstate_resources
         Condition = local.tls_only
       },

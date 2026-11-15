@@ -7,7 +7,7 @@ This repository is used to manage the foundation of a Scaleway Organization usin
 ## Bootstrap
 
 Before Terraform can run, an Organization needs somewhere to store the Terraform state, and an identity for Terraform.
-[`scripts/bootstrap.sh`](scripts/bootstrap.sh) creates them: a Project, a state bucket, an IAM application member of the `Administrators` group, and its API key, stored in Secret Manager.
+[`scripts/bootstrap.sh`](scripts/bootstrap.sh) creates them: a Project, a state bucket, an IAM application with an IAM policy holding the rights the module needs, and its API key, stored in Secret Manager.
 It is idempotent, and can also adopt an existing Organization or repair a broken bootstrap.
 
 ```bash
@@ -66,15 +66,15 @@ The S3 backend ignores the `SCW_*` variables, and the Scaleway provider ignores 
 The provider settings can also come from its arguments or from a `scw` profile instead.
 
 > [!IMPORTANT]
-> The API key gives full admin rights on the Organization: anyone who can read the secret, or the CI secrets holding the key, is an Organization admin.
-> Only give access to them to Organization admins.
+> The API key can manage billing, including payment information, read IAM and the Projects of the Organization, and read and change the Terraform state: see the [rights of the Terraform application](docs/bootstrap.md#rights-of-the-terraform-application).
+> Only give access to the secret, and to the CI secrets holding the key, to Organization admins.
 
 ### Terraform state bucket policy
 
 The module sets a policy on the state bucket, so that only these principals can access the Terraform state:
 
 - the members of the `Administrators` group (users and applications), with full access;
-- the Terraform IAM application (`<name>-ci`), with the access the S3 backend needs, even if it leaves the `Administrators` group.
+- the Terraform IAM application (`<name>-ci`), with full access to the bucket: its IAM policy, set by the bootstrap script, limits what it can actually do.
 
 All requests must use TLS.
 
