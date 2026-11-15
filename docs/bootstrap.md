@@ -139,3 +139,56 @@ Run it regularly, and after any manual change in the bootstrap Project or in the
 The module also warns about part of this drift on every plan (see [bootstrap drift](../README.md#bootstrap-drift)), but it cannot detect everything.
 In particular, if the Terraform IAM application leaves the `Administrators` group, it loses its rights: Terraform then fails with permission errors on its first reads, before reaching any warning.
 Run the script with the credentials of an Organization admin, not with the Terraform API key, to add it back to the group.
+
+## Contract with the module
+
+The module relies on what the script creates: both must agree on the items below.
+This list is maintained by hand: a pull request changing one of these items updates the script, the module and this list together (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
+The [manual test procedure](testing.md) checks that both sides agree on a real Organization.
+
+### Inputs and names
+
+The module inputs mirror the options of the script, with the same defaults and the same validation rules:
+
+| Script option | Module input | Default | Used for |
+|---|---|---|---|
+| `--name` | `name` | `tf-foundation` | Names of the bootstrap resources. 1 to 39 lowercase letters, digits and hyphens. |
+| `--region` | `region` | `fr-par` | Region of the state bucket and of the secret. |
+| `--use-default-project` | `use_default_project` | `false` | Project holding the bucket and the secret: `<name>`, or the `default` Project, whose ID is the Organization ID. |
+| `--state-retention` | `state_retention` | `90` | Retention of old state versions, `30` days at least, or `never`. |
+
+Both sides build the same names from these values:
+
+| Resource | Name | Module (`main.tf`) |
+|---|---|---|
+| Project | `<name>` | `data.scaleway_account_project.foundation` |
+| State bucket | `<name>-tfstate-<region>-<first 8 characters of the Organization ID>` | `local.bucket_name` |
+| Terraform IAM application | `<name>-ci` | `data.scaleway_iam_application.foundation` |
+| Secret holding the API key | `<name>-ci-key` | `check.terraform_secret` |
+| Group of the Terraform application | `Administrators` | `data.scaleway_iam_group.administrators` |
+
+### Ownership tag
+
+The script tags the resources it creates with `owner=foundation-bootscript`.
+The module refuses a state bucket or a Terraform IAM application without it (`main.tf`).
+
+### Settings checked by the module
+
+The module warns, without stopping the plan, when a setting enforced by the script is lost:
+
+| Setting | Value | Module |
+|---|---|---|
+| Versioning of the state bucket | enabled | `check.state_bucket_versioning` (`state.tf`) |
+| Protection of the secret | protected | `check.terraform_secret` (`main.tf`) |
+| Lifecycle rules of the state bucket | `delete-old-state-versions` (after the retention, absent with `never`), `delete-lockfile-leftovers`, and `abort-incomplete-uploads` (after 7 days), and no other rule | `check.state_bucket_lifecycle` (`state.tf`) |
+
+### Exceptions
+
+Settings enforced by the script but not checked by the module, on purpose:
+
+| Setting | Reason |
+|---|---|
+| Membership of the Terraform IAM application in `Administrators` | The module cannot check it: without it, Terraform fails on its first reads, before any check. See [detecting drift](#detecting-drift). |
+| Private ACL of the state bucket | The bucket policy managed by the module already restricts access whenever Terraform runs. The ACL matters when the policy is missing, which only the script's dry run can report. |
+| API key, its default Project, and its storage in the secret | The module does not use them: the API key is given to Terraform by the CI. |
+| Type of the secret (`key_value`) | Only used to retrieve the API key, outside Terraform. |

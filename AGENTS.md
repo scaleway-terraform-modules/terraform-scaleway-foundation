@@ -51,5 +51,8 @@ Co-Authored-By: Qwen3 Coder 30B (qwen3-coder:30b; Ollama; local) <noreply@localh
   - `terraform init -backend=false && terraform validate`
   - `tflint --init && tflint --call-module-type=local`
   - `terraform-docs .` to refresh the `README.md` documentation block.
-- Changes to `scripts/bootstrap.sh`, or to how the module finds or checks the bootstrap resources, also need the [manual test procedure](docs/testing.md).
-  It changes a real Organization with admin credentials: only run it when the operator explicitly asks and provides the test Organization. Otherwise, tell the operator it is needed and report it as not run.
+- Keep the bootstrap script and the module consistent, as described by their [contract](docs/bootstrap.md#contract-with-the-module):
+  - a change to an item of the contract updates `scripts/bootstrap.sh`, the module and the contract in the same pull request;
+  - a new setting enforced by the script states, in the pull request, whether the module checks it, or which exception of the contract applies. When unsure, ask the operator instead of deciding;
+  - changes to `scripts/bootstrap.sh`, or to how the module finds or checks the bootstrap resources, also need the [manual test procedure](docs/testing.md).
+    It changes a real Organization with admin credentials: only run it when the operator explicitly asks and provides the test Organization. Otherwise, tell the operator it is needed and report it as not run.
