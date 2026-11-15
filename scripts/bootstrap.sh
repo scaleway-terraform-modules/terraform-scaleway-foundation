@@ -10,7 +10,8 @@
 #      --state-retention days, default 90) and cleaning up after state locks and
 #      incomplete uploads;
 #   3. an IAM application "<name>-ci" used by Terraform;
-#   4. the membership of that application in the "Administrators" group;
+#   4. an IAM policy "<name>-ci" granting that application the rights the module needs,
+#      instead of a membership of the "Administrators" group, which is removed;
 #   5. an API key "<name>-ci" for that application, with the Project of 1. as default Project;
 #   6. a protected Secret Manager secret "<name>-ci-key", and 7. a version of it holding
 #      the API key.
@@ -37,6 +38,12 @@ readonly OWNER_TAG="owner=foundation-bootscript"
 readonly DEFAULT_NAME="tf-foundation"
 readonly DEFAULT_REGION="fr-par"
 readonly ADMIN_GROUP_NAME="Administrators"
+
+# Rights of the Terraform application: what the module needs, and nothing more. Sorted,
+# as they are compared with the rules of the policy. The state bucket policy managed by
+# the module grants the application full access to the bucket: these sets limit it.
+readonly TERRAFORM_ORGANIZATION_PERMISSION_SETS="BillingManager IAMApplicationReadOnly IAMGroupReadOnly IAMUserReadOnly ProjectReadOnly"
+readonly TERRAFORM_PROJECT_PERMISSION_SETS="ObjectStorageBucketPolicyFullAccess ObjectStorageBucketsRead ObjectStorageObjectsDelete ObjectStorageObjectsRead ObjectStorageObjectsWrite SecretManagerReadOnly"
 
 # Lifecycle of the state bucket. Old versions of the state are kept long enough to
 # restore a state broken by an apply noticed late, at least a monthly cycle.
@@ -67,6 +74,8 @@ PROJECT_DESCRIPTION=""
 BUCKET_NAME=""
 APPLICATION_NAME=""
 APPLICATION_DESCRIPTION=""
+POLICY_NAME=""
+POLICY_DESCRIPTION=""
 API_KEY_DESCRIPTION=""
 SECRET_NAME=""
 SECRET_DESCRIPTION=""
@@ -261,6 +270,8 @@ derive_names() {
   BUCKET_NAME="${NAME}-tfstate-${REGION}-${ORGANIZATION_ID:0:8}"
   APPLICATION_NAME="${NAME}-ci"
   APPLICATION_DESCRIPTION="Identity used by Terraform to manage the Organization."
+  POLICY_NAME="${NAME}-ci"
+  POLICY_DESCRIPTION="Rights of the ${APPLICATION_NAME} IAM application, managed by scripts/bootstrap.sh."
   # API keys have no name: the name goes in the description, with the ownership mark.
   API_KEY_DESCRIPTION="${APPLICATION_NAME} (${OWNER_TAG})"
   SECRET_NAME="${NAME}-ci-key"
@@ -548,26 +559,113 @@ ensure_application() {
   fi
 }
 
-ensure_admin_membership() {
+# Rules of the policy of the Terraform application, one per line, normalized for
+# comparison: scope type, Projects, permission sets, deny, condition.
+expected_policy_rules() {
+  printf 'organization||%s|false|\n' "${TERRAFORM_ORGANIZATION_PERMISSION_SETS}"
+  printf 'projects|%s|%s|false|\n' "${PROJECT_ID}" "${TERRAFORM_PROJECT_PERMISSION_SETS}"
+}
+
+# Normalize the rules listed by scw (same fields, lists separated by spaces): sort the
+# Projects and the permission sets of each rule, then the rules.
+normalize_policy_rules() {
+  local scope projects sets deny condition
+  while IFS='|' read -r scope projects sets deny condition; do
+    [[ -n "${scope}" ]] || continue
+    projects="$(tr ' ' '\n' <<<"${projects}" | sed '/^$/d' | sort | tr '\n' ' ')"
+    sets="$(tr ' ' '\n' <<<"${sets}" | sed '/^$/d' | sort | tr '\n' ' ')"
+    printf '%s|%s|%s|%s|%s\n' "${scope}" "${projects% }" "${sets% }" "${deny}" "${condition}"
+  done | sort
+}
+
+# Arguments of scw setting the rules of the policy.
+policy_rule_args() {
+  local i=0 set
+  for set in ${TERRAFORM_ORGANIZATION_PERMISSION_SETS}; do
+    printf 'rules.0.permission-set-names.%s=%s\n' "${i}" "${set}"
+    i=$((i + 1))
+  done
+  printf 'rules.0.organization-id=%s\n' "${ORGANIZATION_ID}"
+  i=0
+  for set in ${TERRAFORM_PROJECT_PERMISSION_SETS}; do
+    printf 'rules.1.permission-set-names.%s=%s\n' "${i}" "${set}"
+    i=$((i + 1))
+  done
+  printf 'rules.1.project-ids.0=%s\n' "${PROJECT_ID}"
+}
+
+# IAM policy of the Terraform application: only the rights the module needs.
+ensure_application_policy() {
+  step "IAM policy '${POLICY_NAME}'"
+  if [[ -z "${APPLICATION_ID}" || -z "${PROJECT_ID}" ]]; then
+    change "create policy '${POLICY_NAME}' for application '${APPLICATION_NAME}'"
+    return 0
+  fi
+
+  local rule_args=() line
+  while IFS= read -r line; do rule_args+=("${line}"); done < <(policy_rule_args)
+
+  local matches policy_id
+  matches="$(scw_read iam policy list organization-id="${ORGANIZATION_ID}" policy-name="${POLICY_NAME}" \
+    -o template='{{ .ID }}|{{ .Name }}|{{ .ApplicationID }}|{{ range .Tags }}{{ . }},{{ end }}' | field_equals 2 "${POLICY_NAME}")"
+  case "$(count_lines "${matches}")" in
+    0)
+      change "create policy '${POLICY_NAME}' for application '${APPLICATION_NAME}'"
+      scw_write iam policy create name="${POLICY_NAME}" description="${POLICY_DESCRIPTION}" \
+        organization-id="${ORGANIZATION_ID}" application-id="${APPLICATION_ID}" tags.0="${OWNER_TAG}" \
+        "${rule_args[@]}" >/dev/null
+      return 0
+      ;;
+    1) ;;
+    *) die "Several IAM policies are named '${POLICY_NAME}'. Rename the extra ones." ;;
+  esac
+
+  policy_id="$(printf '%s' "${matches}" | cut -d'|' -f1)"
+  has_owner_mark "${matches}" || not_owned "IAM policy '${POLICY_NAME}' (${policy_id})"
+
+  local attached=true rules_ok=true current
+  [[ "$(printf '%s' "${matches}" | cut -d'|' -f3)" == "${APPLICATION_ID}" ]] || attached=false
+  current="$(scw_read iam rule list policy-id="${policy_id}" \
+    -o template='{{ .PermissionSetsScopeType }}|{{ range .ProjectIDs }}{{ . }} {{ end }}|{{ range .PermissionSetNames }}{{ . }} {{ end }}|{{ .Deny }}|{{ .Condition }}' |
+    normalize_policy_rules)"
+  [[ "${current}" == "$(expected_policy_rules | normalize_policy_rules)" ]] || rules_ok=false
+
+  if [[ "${attached}" == true && "${rules_ok}" == true ]]; then
+    ok "exists (${policy_id}), attached to application '${APPLICATION_NAME}', with the expected rules"
+    return 0
+  fi
+  if [[ "${attached}" != true ]]; then
+    change "attach policy '${POLICY_NAME}' to application '${APPLICATION_NAME}'"
+    scw_write iam policy update policy-id="${policy_id}" application-id="${APPLICATION_ID}" >/dev/null
+  fi
+  if [[ "${rules_ok}" != true ]]; then
+    change "set the rules of policy '${POLICY_NAME}': the rights '${APPLICATION_NAME}' needs, and nothing else"
+    scw_write iam rule update policy-id="${policy_id}" "${rule_args[@]}" >/dev/null
+  fi
+}
+
+# Earlier versions of this script made the Terraform application a member of the
+# Administrators group, giving it full rights: its policy replaces this membership.
+remove_admin_membership() {
   step "Membership of '${APPLICATION_NAME}' in group '${ADMIN_GROUP_NAME}'"
+  if [[ -z "${APPLICATION_ID}" ]]; then
+    ok "not a member"
+    return 0
+  fi
   local group_id
   group_id="$(scw_read iam group list organization-id="${ORGANIZATION_ID}" name="${ADMIN_GROUP_NAME}" \
     -o template='{{ .ID }}|{{ .Name }}' | field_equals 2 "${ADMIN_GROUP_NAME}" | cut -d'|' -f1)"
   [[ "$(count_lines "${group_id}")" == 1 ]] ||
     die "Expected exactly one IAM group named '${ADMIN_GROUP_NAME}' in the Organization."
 
-  if [[ -z "${APPLICATION_ID}" ]]; then
-    change "add '${APPLICATION_NAME}' to group '${ADMIN_GROUP_NAME}'"
-    return 0
-  fi
   local members
   members="$(scw_read iam group get group-id="${group_id}" -o template='{{ range .ApplicationIDs }}{{ . }} {{ end }}')"
   case " ${members} " in
-    *" ${APPLICATION_ID} "*) ok "already a member" ;;
-    *)
-      change "add '${APPLICATION_NAME}' to group '${ADMIN_GROUP_NAME}'"
-      scw_write iam group add-member group-id="${group_id}" application-id="${APPLICATION_ID}" >/dev/null
+    *" ${APPLICATION_ID} "*)
+      change "remove '${APPLICATION_NAME}' from group '${ADMIN_GROUP_NAME}', its policy grants the rights it needs"
+      scw_write iam group remove-member group-id="${group_id}" application-id="${APPLICATION_ID}" >/dev/null
       ;;
+    *) ok "not a member" ;;
   esac
 }
 
@@ -775,7 +873,8 @@ main() {
   ensure_bucket
   ensure_bucket_lifecycle
   ensure_application
-  ensure_admin_membership
+  ensure_application_policy
+  remove_admin_membership
   ensure_secret
   ensure_api_key
 

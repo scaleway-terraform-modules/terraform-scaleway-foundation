@@ -25,6 +25,9 @@ Use the same script options on every run, and the matching module inputs.
 
 2. Apply the script without `--dry-run`, if the previous step listed changes.
 
+   On an Organization bootstrapped by an earlier version, where the Terraform application is a member of `Administrators`: first run `terraform apply` with the working copy, so that the state bucket policy grants the application access to the bucket, then run the script, which removes the membership.
+   Step 3 then shows the state bucket policy removing the application from its `Administrators` statement: apply it, which also checks that the application can manage the policy with its own rights.
+
 3. Run `terraform init -upgrade`, then `terraform plan` in the test configuration.
 
    Expected: no changes, and no warnings.
@@ -41,7 +44,7 @@ Use the same script options on every run, and the matching module inputs.
 
 5. Run `terraform plan` again.
 
-   Expected: no changes, and one warning for the bucket versioning and one for the secret protection.
+   Expected: no changes, and warnings for the bucket versioning, the lifecycle rules and the secret protection.
    The module does not check the ACL of the bucket: the script repairs it.
 
 6. Run the script again, without `--dry-run`.
@@ -67,3 +70,17 @@ Use the same script options on every run, and the matching module inputs.
    Expected: no changes in both cases, a warning on the retention of old state versions in the first one, and no warnings in the second one.
 
 10. Run the script with `--state-retention` and the retention shown by step 1 to restore it, and restore `state_retention` in the test configuration.
+
+11. Delete the IAM policy of the Terraform application, then run `terraform plan`:
+
+    ```bash
+    scw iam policy delete policy-id=<policy-id>
+    ```
+
+    The policy ID is printed by the script, or by `scw iam policy list policy-name=<name>-ci`.
+
+    Expected: the plan fails with permission errors, as the application has no other rights.
+
+12. Run the script again, then `terraform plan`.
+
+    Expected: the script creates the policy again, and the plan shows no changes, and no warnings.
