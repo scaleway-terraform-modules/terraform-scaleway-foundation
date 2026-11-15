@@ -164,7 +164,7 @@ Both sides build the same names from these values:
 | Project | `<name>` | `data.scaleway_account_project.foundation` |
 | State bucket | `<name>-tfstate-<region>-<first 8 characters of the Organization ID>` | `local.bucket_name` |
 | Terraform IAM application | `<name>-ci` | `data.scaleway_iam_application.foundation` |
-| Secret holding the API key | `<name>-ci-key` | `check.terraform_secret` |
+| Secret holding the API key | `<name>-ci-key` | `check.foundation_secret` |
 | Group of the Terraform application | `Administrators` | `data.scaleway_iam_group.administrators` |
 
 ### Ownership tag
@@ -179,7 +179,7 @@ The module warns, without stopping the plan, when a setting enforced by the scri
 | Setting | Value | Module |
 |---|---|---|
 | Versioning of the state bucket | enabled | `check.state_bucket_versioning` (`state.tf`) |
-| Protection of the secret | protected | `check.terraform_secret` (`main.tf`) |
+| Protection of the secret | protected | `check.foundation_secret` (`main.tf`) |
 | Lifecycle rules of the state bucket | `delete-old-state-versions` (after the retention, absent with `never`), `delete-lockfile-leftovers`, and `abort-incomplete-uploads` (after 7 days), and no other rule | `check.state_bucket_lifecycle` (`state.tf`) |
 
 ### Exceptions
