@@ -63,7 +63,8 @@ The S3 backend and the Scaleway provider read it from different variables, so se
 | `SCW_DEFAULT_ORGANIZATION_ID` | Scaleway provider | ID of the Organization |
 
 The S3 backend ignores the `SCW_*` variables, and the Scaleway provider ignores the `AWS_*` ones.
-The provider settings can also come from its arguments or from a `scw` profile instead.
+The provider settings can also come from its arguments or from a `scw` profile instead, e.g. `organization_id` in the `provider` block instead of `SCW_DEFAULT_ORGANIZATION_ID`.
+Set each of them in one place only: when a setting comes from several sources, such as the `provider` block and an environment variable, the provider warns on every run (`Multiple variable sources detected`).
 
 > [!IMPORTANT]
 > The API key gives full admin rights on the Organization: anyone who can read the secret, or the CI secrets holding the key, is an Organization admin.
